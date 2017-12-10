@@ -16,8 +16,10 @@ class Player {
     socket.on('playerInput', this.handlePlayerInput)
   }
 
-  handlePlayerInput(...args) {
-    console.log(args)
+  handlePlayerInput(input) {
+    const key = Object.keys(input)[0]
+    this.input[key] = input[key]
+    console.log(this.input)
   }
 
   serialize() {
