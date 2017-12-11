@@ -17,7 +17,9 @@ class Player {
       up: false,
       down: false,
       left: false,
-      right: false
+      right: false,
+      rotation: 0,
+      fire: false
     }
 
     this.handlePlayerInput = this.handlePlayerInput.bind(this)
@@ -25,17 +27,17 @@ class Player {
     socket.on('playerInput', this.handlePlayerInput)
   }
 
-  handlePlayerInput(input) {
+  handlePlayerInput (input) {
     const key = Object.keys(input)[0]
     this.input[key] = input[key]
   }
 
-  update() {
+  update () {
     this.move()
   }
-  
-  move() {
-    const {input, body, speed} = this
+
+  move () {
+    const { input, body, speed } = this
 
     body.velocity[0] = 0
     body.velocity[1] = 0
@@ -92,12 +94,17 @@ class Player {
       body.position[1] = this.game.bounds.y
     }
 
-    console.log(body.position[0], body.position[1], body.velocity[0], body.velocity[1])
-
-    this.socket.emit('playerMove', {x: body.position[0], y: body.position[1]})
+    this.socket.emit(
+      'playerStateUpdate',
+      {
+        x: body.position[0],
+        y: body.position[1],
+        rotation: input.rotation
+      }
+    )
   }
 
-  serialize() {
+  serialize () {
     return {
       x: this.body.position[0],
       y: this.body.position[1],

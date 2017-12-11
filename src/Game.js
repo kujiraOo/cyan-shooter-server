@@ -28,8 +28,8 @@ class Game {
     })
   }
 
-  handleClientConnection(socket) {
-    const {players, world} = this
+  handleClientConnection (socket) {
+    const { players, world } = this
 
     players.forEach((player) => {
       socket.emit('enemyInitialized', player.serialize())
@@ -42,12 +42,29 @@ class Game {
 
     socket.emit('playerInitialized', newPlayer.serialize())
     socket.broadcast.emit('enemyInitialized', newPlayer.serialize())
+
+    socket.on('disconnect', () => {
+      this.handleClientDisconnect(socket)
+    })
   }
 
-  update() {
+  handleClientDisconnect (socket) {
+    const { players, world } = this
+    const playerIdx = players.findIndex(player => player.socket.id === socket.id)
+    const player = players[playerIdx]
+
+    world.removeBody(player.body)
+    players.splice(playerIdx, 1)
+
+    socket.broadcast.emit('playerRemoved', socket.id)
+  }
+
+  update () {
     this.world.step(this.timeStep)
 
-    this.players.forEach(player => {player.update()})
+    this.players.forEach(player => {
+      player.update()
+    })
   }
 }
 
