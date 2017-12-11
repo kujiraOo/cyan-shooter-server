@@ -19,7 +19,7 @@ class Player {
       left: false,
       right: false,
       rotation: 0,
-      fire: false
+      leftButton: false
     }
 
     this.handlePlayerInput = this.handlePlayerInput.bind(this)
@@ -30,6 +30,7 @@ class Player {
   handlePlayerInput (input) {
     const key = Object.keys(input)[0]
     this.input[key] = input[key]
+    console.log(input)
   }
 
   update () {
