@@ -1,17 +1,24 @@
 const p2 = require('p2')
+const Bullet = require('./Bullet')
 
 class Player {
   constructor (game, socket, x, y) {
     this.game = game
+    this.world = game.world
     this.socket = socket
     this.speed = 200
+    this.nextShootTime = game.world.time
+    this.shootingRate = 0.5
+
+    this.bullets = []
 
     this.body = new p2.Body({
-      mass: 0,
-      position: [x, y]
+      mass: 1,
+      position: [x, y],
+      collisionResponse: false
     })
 
-    this.body.addShape(new p2.Circle({ radius: 1 }))
+    this.body.addShape(new p2.Circle({ radius: 10 }))
 
     this.input = {
       up: false,
@@ -30,11 +37,41 @@ class Player {
   handlePlayerInput (input) {
     const key = Object.keys(input)[0]
     this.input[key] = input[key]
-    console.log(input)
   }
 
   update () {
     this.move()
+    this.shoot()
+    this.bullets.forEach(bullet => {
+      bullet.update()
+    })
+  }
+
+  checkCollision () {
+    // const { game } = this
+    //
+    // game.players.forEach(({ socket, body }) => {
+    //   const otherPlayerId = socket.id
+    // })
+  }
+
+  shoot() {
+    const {input, world, socket} = this
+
+    if (input.leftButton) {
+      if (world.time > this.nextShootTime) {
+        this.nextShootTime = world.time + this.shootingRate
+
+        const bullet = new Bullet(this, input.rotation)
+        this.bullets.push(bullet)
+        world.addBody(bullet.body)
+
+        const data = bullet.serialize()
+
+        socket.emit('playerBulletInitialized', data)
+        socket.broadcast.emit('enemyBulletInitialized', data)
+      }
+    }
   }
 
   move () {
@@ -95,14 +132,14 @@ class Player {
       body.position[1] = this.game.bounds.y
     }
 
-    this.socket.emit(
-      'playerStateUpdate',
-      {
-        x: body.position[0],
-        y: body.position[1],
-        rotation: input.rotation
-      }
-    )
+    const data = {
+      x: body.position[0],
+      y: body.position[1],
+      rotation: input.rotation
+    }
+
+    this.socket.emit('playerStateUpdate', data)
+    this.socket.broadcast.emit('enemyStateUpdate', data)
   }
 
   serialize () {

@@ -26,6 +26,10 @@ class Game {
     io.on('connection', (socket) => {
       this.handleClientConnection(socket)
     })
+
+    // this.world.on('addBody', (body)=> {console.log(body.body.shapes[0])})
+    this.world.on('beginContact', () => {console.log('pvp')})
+    this.world.on('impact', () => {console.log('pvp')})
   }
 
   handleClientConnection (socket) {
