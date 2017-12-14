@@ -30,14 +30,19 @@ class Game {
     })
 
     this.world.on('impact', ({bodyA, bodyB}) => {
-      console.log(bodyA.id, bodyB.id)
+      let player, bullet
+
       if (bodyA.gameEntityType === 'BULLET') {
-        bodyA.bullet.destroy()
+        player = bodyB.player
+        bullet = bodyA.bullet
+
+      } else {
+        player = bodyA.player
+        bullet = bodyB.bullet
       }
 
-      if (bodyB.gameEntityType === 'BULLET') {
-        bodyB.bullet.destroy()
-      }
+      player.hit(bullet.damage)
+      bullet.destroy()
     })
   }
 

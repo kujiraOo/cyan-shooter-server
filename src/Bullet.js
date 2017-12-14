@@ -11,6 +11,7 @@ class Bullet {
     this.game = player.game
     this.world = player.world
     this.collisionGroupId = collisionGroupId
+    this.damage = 20
 
     this.initBody()
   }

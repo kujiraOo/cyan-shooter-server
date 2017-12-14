@@ -1,6 +1,6 @@
 const p2 = require('p2')
 const Bullet = require('./Bullet')
-const {MASKS, GROUPS} = require('./collistion')
+const { MASKS, GROUPS } = require('./collistion')
 
 class Player {
   constructor (game, socket, x, y, collisionGroupId) {
@@ -11,6 +11,7 @@ class Player {
     this.nextShootTime = game.world.time
     this.shootingRate = 0.1
     this.collisionGroupId = collisionGroupId
+    this.hp = 100
 
     this.bullets = []
 
@@ -30,8 +31,8 @@ class Player {
     socket.on('playerInput', this.handlePlayerInput)
   }
 
-  initBody(x, y) {
-    const {collisionGroupId} = this
+  initBody (x, y) {
+    const { collisionGroupId } = this
     const shape = new p2.Circle({ radius: 10 })
     shape.collisionGroup = GROUPS[collisionGroupId]
     shape.collisionMask = MASKS[collisionGroupId]
@@ -69,8 +70,8 @@ class Player {
     // })
   }
 
-  shoot() {
-    const {input, world, socket, collisionGroupId} = this
+  shoot () {
+    const { input, world, socket, collisionGroupId } = this
 
     if (input.leftButton) {
       if (world.time > this.nextShootTime) {
@@ -154,12 +155,57 @@ class Player {
     this.socket.broadcast.emit('enemyStateUpdate', data)
   }
 
+  hit (damage) {
+    this.hp = this.hp - damage
+
+    this.socket.emit('playerHit', { hp: this.hp })
+    this.socket.broadcast.emit('enemyHit', { hp: this.hp, id: this.socket.id })
+
+    console.log(this.socket.id, this.hp)
+
+    if (this.hp <= 0) {
+      this.kill()
+    }
+  }
+
+  kill () {
+    const { socket, world, body } = this
+
+    world.removeBody(body)
+
+    socket.emit('playerKilled')
+    socket.broadcast.emit('enemyKilled', { id: this.socket.id })
+
+    console.log(socket.id, 'killed')
+
+    setTimeout(() => {
+      this.respawn()
+    }, 10000)
+  }
+
+  respawn () {
+    const { body, world, socket } = this
+
+    this.hp = 100
+
+    body.position[0] = 50
+    body.position[1] = 50
+
+    world.addBody(body)
+
+    console.log(socket.id, 'respawned')
+
+    socket.emit('playerRespawned', this.serialize())
+    socket.broadcast.emit('enemyRespawned', this.serialize())
+  }
+
   serialize () {
     return {
       x: this.body.position[0],
       y: this.body.position[1],
       rotation: this.input.rotation,
-      id: this.socket.id
+      id: this.socket.id,
+      hp: this.hp
     }
   }
 }
