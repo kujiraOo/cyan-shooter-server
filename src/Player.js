@@ -55,8 +55,10 @@ class Player {
   }
 
   update () {
-    this.move()
-    this.shoot()
+    if (this.hp > 0) {
+      this.move()
+      this.shoot()
+    }
     this.bullets.forEach(bullet => {
       bullet.update()
     })
