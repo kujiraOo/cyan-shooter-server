@@ -1,14 +1,25 @@
 const p2 = require('p2')
 const uuid = require('uuid')
+const { MASKS, GROUPS } = require('./collistion')
 
 class Bullet {
-  constructor (player, angle) {
+  constructor (player, angle, collisionGroupId) {
     this.player = player
     this.speed = 400
     this.angle = angle
     this.id = uuid()
     this.game = player.game
     this.world = player.world
+    this.collisionGroupId = collisionGroupId
+
+    this.initBody()
+  }
+
+  initBody () {
+    const { collisionGroupId, player, angle } = this
+    const shape = new p2.Circle({ radius: 5 })
+    shape.collisionGroup = GROUPS[collisionGroupId]
+    shape.collisionMask = MASKS[collisionGroupId]
 
     this.body = new p2.Body({
       mass: 1,
@@ -19,24 +30,33 @@ class Bullet {
     this.body.velocity[0] = Math.cos(angle) * this.speed
     this.body.velocity[1] = Math.sin(angle) * this.speed
 
-    this.body.addShape(new p2.Circle({ radius: 5 }))
+    this.body.addShape(shape)
+
+    this.body.bullet = this
+    this.body.gameEntityType = 'BULLET'
   }
 
   update () {
-    const { player, body, game, world } = this
+    const { player, body, game } = this
 
     if (body.position[0] < 0 || body.position[1] < 0 ||
       body.position[0] > game.bounds.x || body.position[1] > game.bounds.y) {
-      world.removeBody(body)
-      player.bullets.splice(player.bullets.findIndex(bullet => this.id === bullet.id), 1)
-
-      player.socket.emit('playerBulletRemoved', this.id)
-      player.socket.broadcast.emit('enemyBulletRemoved', this.id)
+      this.destroy()
     } else {
       const data = this.serialize()
       player.socket.emit('playerBulletMove', data)
       player.socket.broadcast.emit('enemyBulletMove', data)
     }
+  }
+
+  destroy() {
+    const { player, body, world } = this
+
+    world.removeBody(body)
+    player.bullets.splice(player.bullets.findIndex(bullet => this.id === bullet.id), 1)
+
+    player.socket.emit('playerBulletRemoved', this.id)
+    player.socket.broadcast.emit('enemyBulletRemoved', this.id)
   }
 
   serialize () {

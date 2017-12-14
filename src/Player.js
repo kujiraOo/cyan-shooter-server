@@ -1,24 +1,20 @@
 const p2 = require('p2')
 const Bullet = require('./Bullet')
+const {MASKS, GROUPS} = require('./collistion')
 
 class Player {
-  constructor (game, socket, x, y) {
+  constructor (game, socket, x, y, collisionGroupId) {
     this.game = game
     this.world = game.world
     this.socket = socket
     this.speed = 200
     this.nextShootTime = game.world.time
-    this.shootingRate = 0.5
+    this.shootingRate = 0.1
+    this.collisionGroupId = collisionGroupId
 
     this.bullets = []
 
-    this.body = new p2.Body({
-      mass: 1,
-      position: [x, y],
-      collisionResponse: false
-    })
-
-    this.body.addShape(new p2.Circle({ radius: 10 }))
+    this.initBody(x, y)
 
     this.input = {
       up: false,
@@ -32,6 +28,24 @@ class Player {
     this.handlePlayerInput = this.handlePlayerInput.bind(this)
 
     socket.on('playerInput', this.handlePlayerInput)
+  }
+
+  initBody(x, y) {
+    const {collisionGroupId} = this
+    const shape = new p2.Circle({ radius: 10 })
+    shape.collisionGroup = GROUPS[collisionGroupId]
+    shape.collisionMask = MASKS[collisionGroupId]
+
+    this.body = new p2.Body({
+      mass: 1,
+      position: [x, y],
+      collisionResponse: false
+    })
+
+    this.body.addShape(shape)
+
+    this.body.player = this
+    this.body.gameEntityType = 'PLAYER'
   }
 
   handlePlayerInput (input) {
@@ -56,13 +70,15 @@ class Player {
   }
 
   shoot() {
-    const {input, world, socket} = this
+    const {input, world, socket, collisionGroupId} = this
 
     if (input.leftButton) {
       if (world.time > this.nextShootTime) {
         this.nextShootTime = world.time + this.shootingRate
 
-        const bullet = new Bullet(this, input.rotation)
+        const bulletCollisionGroupId = collisionGroupId.replace('PLAYER', 'BULLET')
+
+        const bullet = new Bullet(this, input.rotation, bulletCollisionGroupId)
         this.bullets.push(bullet)
         world.addBody(bullet.body)
 
@@ -132,11 +148,7 @@ class Player {
       body.position[1] = this.game.bounds.y
     }
 
-    const data = {
-      x: body.position[0],
-      y: body.position[1],
-      rotation: input.rotation
-    }
+    const data = this.serialize()
 
     this.socket.emit('playerStateUpdate', data)
     this.socket.broadcast.emit('enemyStateUpdate', data)
@@ -146,6 +158,7 @@ class Player {
     return {
       x: this.body.position[0],
       y: this.body.position[1],
+      rotation: this.input.rotation,
       id: this.socket.id
     }
   }

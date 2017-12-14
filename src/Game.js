@@ -1,6 +1,8 @@
 const Player = require('./Player')
 const p2 = require('p2')
 
+const MAX_PLAYERS = 6
+
 class Game {
   constructor (io) {
     this.io = io
@@ -27,29 +29,41 @@ class Game {
       this.handleClientConnection(socket)
     })
 
-    // this.world.on('addBody', (body)=> {console.log(body.body.shapes[0])})
-    this.world.on('beginContact', () => {console.log('pvp')})
-    this.world.on('impact', () => {console.log('pvp')})
+    this.world.on('impact', ({bodyA, bodyB}) => {
+      console.log(bodyA.id, bodyB.id)
+      if (bodyA.gameEntityType === 'BULLET') {
+        bodyA.bullet.destroy()
+      }
+
+      if (bodyB.gameEntityType === 'BULLET') {
+        bodyB.bullet.destroy()
+      }
+    })
   }
 
   handleClientConnection (socket) {
     const { players, world } = this
 
-    players.forEach((player) => {
-      socket.emit('enemyInitialized', player.serialize())
-    })
+    if (players.length < MAX_PLAYERS) {
+      players.forEach((player) => {
+        socket.emit('enemyInitialized', player.serialize())
+      })
 
-    const newPlayer = new Player(this, socket, 50, 50)
-    world.addBody(newPlayer.body)
+      const collisionGroupId = 'PLAYER_' + (players.length + 1)
+      const newPlayer = new Player(this, socket, 50, 50, collisionGroupId)
 
-    players.push(newPlayer)
+      world.addBody(newPlayer.body)
+      players.push(newPlayer)
 
-    socket.emit('playerInitialized', newPlayer.serialize())
-    socket.broadcast.emit('enemyInitialized', newPlayer.serialize())
+      socket.emit('playerInitialized', newPlayer.serialize())
+      socket.broadcast.emit('enemyInitialized', newPlayer.serialize())
+      console.log(players.length)
 
-    socket.on('disconnect', () => {
-      this.handleClientDisconnect(socket)
-    })
+      socket.on('disconnect', () => {
+        this.handleClientDisconnect(socket)
+        console.log(players.length)
+      })
+    }
   }
 
   handleClientDisconnect (socket) {
