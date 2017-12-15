@@ -182,7 +182,7 @@ class Player {
 
     setTimeout(() => {
       this.respawn()
-    }, 10000)
+    }, 5000)
   }
 
   respawn () {
