@@ -1,5 +1,7 @@
 const Player = require('./Player')
 const p2 = require('p2')
+const { SPAWN_OFFSET } = require('./const')
+const { getRandomInt } = require('./utils')
 
 const MAX_PLAYERS = 6
 
@@ -29,7 +31,7 @@ class Game {
       this.handleClientConnection(socket)
     })
 
-    this.world.on('impact', ({bodyA, bodyB}) => {
+    this.world.on('impact', ({ bodyA, bodyB }) => {
       let player, bullet
 
       if (bodyA.gameEntityType === 'BULLET') {
@@ -55,7 +57,12 @@ class Game {
       })
 
       const collisionGroupId = 'PLAYER_' + (players.length + 1)
-      const newPlayer = new Player(this, socket, 50, 50, collisionGroupId)
+      const newPlayer = new Player(
+        this, socket,
+        getRandomInt(SPAWN_OFFSET, this.bounds.x - SPAWN_OFFSET),
+        getRandomInt(SPAWN_OFFSET, this.bounds.y - SPAWN_OFFSET),
+        collisionGroupId
+      )
 
       world.addBody(newPlayer.body)
       players.push(newPlayer)

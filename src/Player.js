@@ -1,6 +1,8 @@
+const { getRandomInt } = require('./utils')
 const p2 = require('p2')
 const Bullet = require('./Bullet')
 const { MASKS, GROUPS } = require('./collistion')
+const { SPAWN_OFFSET } = require('./const')
 
 class Player {
   constructor (game, socket, x, y, collisionGroupId) {
@@ -186,12 +188,12 @@ class Player {
   }
 
   respawn () {
-    const { body, world, socket } = this
+    const { body, world, socket, game } = this
 
     this.hp = 100
 
-    body.position[0] = 50
-    body.position[1] = 50
+    body.position[0] = getRandomInt(SPAWN_OFFSET, game.bounds.x - SPAWN_OFFSET)
+    body.position[1] = getRandomInt(SPAWN_OFFSET, game.bounds.y - SPAWN_OFFSET)
 
     world.addBody(body)
 
