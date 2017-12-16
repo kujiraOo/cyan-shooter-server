@@ -43,7 +43,10 @@ class Game {
         bullet = bodyB.bullet
       }
 
-      player.hit(bullet.damage)
+      const wasKilled = player.hit(bullet.damage)
+      if (wasKilled) {
+        bullet.player.increaseKillScore()
+      }
       bullet.destroy()
     })
   }

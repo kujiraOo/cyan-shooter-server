@@ -14,6 +14,10 @@ class Player {
     this.shootingRate = 0.1
     this.collisionGroupId = collisionGroupId
     this.hp = 100
+    this.score = {
+      kills: 0,
+      deaths: 0
+    }
 
     this.bullets = []
 
@@ -169,15 +173,21 @@ class Player {
 
     if (this.hp <= 0) {
       this.kill()
+
+      return true
     }
+
+    return false
   }
 
   kill () {
     const { socket, world, body } = this
 
+    this.score.deaths++
+
     world.removeBody(body)
 
-    socket.emit('playerKilled')
+    socket.emit('playerKilled', this.serialize())
     socket.broadcast.emit('enemyKilled', { id: this.socket.id })
 
     console.log(socket.id, 'killed')
@@ -203,13 +213,20 @@ class Player {
     socket.broadcast.emit('enemyRespawned', this.serialize())
   }
 
+  increaseKillScore() {
+    this.score.kills++
+
+    this.socket.emit('playerScored', this.serialize())
+  }
+
   serialize () {
     return {
       x: this.body.position[0],
       y: this.body.position[1],
       rotation: this.input.rotation,
       id: this.socket.id,
-      hp: this.hp
+      hp: this.hp,
+      score: this.score
     }
   }
 }
