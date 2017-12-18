@@ -61,7 +61,7 @@ class Game {
 
       const collisionGroupId = 'PLAYER_' + (players.length + 1)
       const newPlayer = new Player(
-        this, socket,
+        players.length, this, socket,
         getRandomInt(SPAWN_OFFSET, this.bounds.x - SPAWN_OFFSET),
         getRandomInt(SPAWN_OFFSET, this.bounds.y - SPAWN_OFFSET),
         collisionGroupId

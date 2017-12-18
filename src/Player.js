@@ -5,7 +5,7 @@ const { MASKS, GROUPS } = require('./collistion')
 const { SPAWN_OFFSET } = require('./const')
 
 class Player {
-  constructor (game, socket, x, y, collisionGroupId) {
+  constructor (id, game, socket, x, y, collisionGroupId) {
     this.game = game
     this.world = game.world
     this.socket = socket
@@ -18,6 +18,8 @@ class Player {
       kills: 0,
       deaths: 0
     }
+
+    this.id = id
 
     this.bullets = []
 
