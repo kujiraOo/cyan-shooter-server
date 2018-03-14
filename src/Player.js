@@ -1,7 +1,7 @@
 const { getRandomInt } = require('./utils')
 const p2 = require('p2')
 const Bullet = require('./Bullet')
-const { MASKS, GROUPS } = require('./collistion')
+const { MASKS, GROUPS } = require('./collision')
 const { SPAWN_OFFSET } = require('./const')
 
 class Player {
@@ -87,7 +87,7 @@ class Player {
       if (world.time > this.nextShootTime) {
         this.nextShootTime = world.time + this.shootingRate
 
-        const bulletCollisionGroupId = collisionGroupId.replace('PLAYER', 'BULLET')
+        const bulletCollisionGroupId = collisionGroupId + '_BULLET'
 
         const bullet = new Bullet(this, input.rotation, bulletCollisionGroupId)
         this.bullets.push(bullet)
@@ -228,7 +228,8 @@ class Player {
       rotation: this.input.rotation,
       id: this.socket.id,
       hp: this.hp,
-      score: this.score
+      score: this.score,
+      teamId: this.collisionGroupId
     }
   }
 }

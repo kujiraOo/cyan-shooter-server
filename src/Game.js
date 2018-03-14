@@ -3,9 +3,44 @@ const p2 = require('p2')
 const { SPAWN_OFFSET } = require('./const')
 const { getRandomInt } = require('./utils')
 
+const STATES = {
+  WAITING_FOR_PLAYERS: 'WAITING_FOR_PLAYERS',
+  COUNTDOWN: 'COUNTDOWN',
+  IN_PROGRESS: 'IN_PROGRESS'
+}
+
+const PLAYERS = {
+  PLAYER_1: {
+    playerCollisionGroupId: 'TEAM_1',
+    bulletCollisionGroupId: 'TEAM_1_BULLET'
+  },
+  PLAYER_2: {
+    playerCollisionGroupId: 'TEAM_1',
+    bulletCollisionGroupId: 'TEAM_1_BULLET'
+  },
+  PLAYER_3: {
+    playerCollisionGroupId: 'TEAM_1',
+    bulletCollisionGroupId: 'TEAM_1_BULLET'
+  },
+  PLAYER_4: {
+    playerCollisionGroupId: 'TEAM_2',
+    bulletCollisionGroupId: 'TEAM_2_BULLET'
+  },
+  PLAYER_5: {
+    playerCollisionGroupId: 'TEAM_2',
+    bulletCollisionGroupId: 'TEAM_2_BULLET'
+  },
+  PLAYER_6: {
+    playerCollisionGroupId: 'TEAM_2',
+    bulletCollisionGroupId: 'TEAM_2_BULLET'
+  }
+}
+
 class Game {
   constructor(io) {
     this.io = io
+
+    this.state = STATES.WAITING_FOR_PLAYERS
 
     this.players = {
       PLAYER_1: null,
@@ -50,32 +85,48 @@ class Game {
 
     if (slotId) {
 
-      Object.keys(this.players).forEach(slotId => {
-        const player = this.players[slotId]
-
-        if (player) {
-          socket.emit('enemyInitialized', player.serialize())
-        }
-      })
-
       const collisionGroupId = slotId
       const newPlayer = new Player(
         slotId, this, socket,
         getRandomInt(SPAWN_OFFSET, this.bounds.x - SPAWN_OFFSET),
         getRandomInt(SPAWN_OFFSET, this.bounds.y - SPAWN_OFFSET),
-        collisionGroupId
+        PLAYERS[slotId].playerCollisionGroupId
       )
 
       world.addBody(newPlayer.body)
       this.players[slotId] = newPlayer
 
       socket.emit('playerInitialized', newPlayer.serialize())
-      socket.broadcast.emit('enemyInitialized', newPlayer.serialize())
+      // socket.broadcast.emit('enemyInitialized', newPlayer.serialize())
+
+      Object.keys(this.players).forEach(slotId => {
+        const player = this.players[slotId]
+
+        if (player) {
+          if (player.collisionGroupId !== newPlayer.collisionGroupId) {
+            if (player.socket.id !== socket.id) {
+              player.socket.emit('enemyInitialized', newPlayer.serialize())
+              socket.emit('enemyInitialized', player.serialize())
+            }
+          } else {
+            if (player.socket.id !== socket.id) {
+              player.socket.emit('allyInitialized', newPlayer.serialize())
+              socket.emit('allyInitialized', player.serialize())
+            }
+          }
+        }
+      })
+
       console.log('Added player to slot: ' + slotId)
 
       socket.on('disconnect', () => {
         this.handleClientDisconnect(socket)
       })
+
+      if (!this.areFreePlayerSlotsLeft()) {
+        this.state = STATES.COUNTDOWN
+        console.log('Changed state to ' + this.state)
+      }
     } else {
       console.log('No free player slots')
     }
@@ -93,6 +144,12 @@ class Game {
     }
 
     return null
+  }
+
+  areFreePlayerSlotsLeft () {
+    const freeSlotId = this.findFreePlayerSlotId()
+
+    return freeSlotId !== null
   }
 
   findSlotIdBySocket (socket) {

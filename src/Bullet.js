@@ -1,6 +1,6 @@
 const p2 = require('p2')
 const uuid = require('uuid')
-const { MASKS, GROUPS } = require('./collistion')
+const { MASKS, GROUPS } = require('./collision')
 
 class Bullet {
   constructor (player, angle, collisionGroupId) {
