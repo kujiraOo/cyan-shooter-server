@@ -5,6 +5,7 @@ const { getRandomInt } = require('./utils')
 
 const STATES = {
   WAITING_FOR_PLAYERS: 'WAITING_FOR_PLAYERS',
+  PRE_COUNTDOWN: 'PRE_COUNTDOWN',
   COUNTDOWN: 'COUNTDOWN',
   IN_PROGRESS: 'IN_PROGRESS'
 }
@@ -16,7 +17,7 @@ const PLAYERS = {
   },
   PLAYER_2: {
     playerCollisionGroupId: 'TEAM_1',
-    bulletCollisionGroupId: 'TEAM_1_BULLET'
+    bulletCollisionGroupId: 'TEAM_1_BULLET',
   },
   PLAYER_3: {
     playerCollisionGroupId: 'TEAM_1',
@@ -49,6 +50,11 @@ class Game {
       PLAYER_4: null,
       PLAYER_5: null,
       PLAYER_6: null
+    }
+
+    this.teamsScores = {
+      TEAM_1: 0,
+      TEAM_2: 0
     }
 
     this.world = new p2.World({
@@ -124,12 +130,56 @@ class Game {
       })
 
       if (!this.areFreePlayerSlotsLeft()) {
-        this.state = STATES.COUNTDOWN
-        console.log('Changed state to ' + this.state)
+        this.startCountDown()
       }
+
+      this.sendTeamScoresMessage(newPlayer)
+      socket.emit('gameStateChanged', this.state)
+      
     } else {
       console.log('No free player slots')
     }
+  }
+
+  givePlayersControl (canControl) {
+    Object.keys(this.players).forEach(slotId => {
+      const player = this.players[slotId]
+
+      if (player) {
+        player.canControl = canControl
+      }
+    })
+  }
+
+  startCountDown () {
+    this.state = STATES.COUNTDOWN
+    console.log('Changed state to ' + this.state)
+
+    this.givePlayersControl(false)
+
+    Object.keys(this.players).forEach(slotId => {
+      const player = this.players[slotId]
+
+      if (player) {
+        player.respawn()
+        player.socket.emit('gameStateChanged', this.state)
+      }
+    })
+
+    setTimeout(() => {
+      this.state = STATES.IN_PROGRESS
+      console.log('Changed state to ' + this.state)
+
+      Object.keys(this.players).forEach(slotId => {
+        const player = this.players[slotId]
+  
+        if (player) {
+          player.socket.emit('gameStateChanged', this.state)
+        }
+      })
+
+      this.givePlayersControl(true)
+    }, 2000)
   }
 
   findFreePlayerSlotId () {
@@ -182,22 +232,64 @@ class Game {
   }
 
   handleCollision ({ bodyA, bodyB }) {
-    let player, bullet
+    if (this.state === STATES.IN_PROGRESS) {
 
-    if (bodyA.gameEntityType === 'BULLET') {
-      player = bodyB.player
-      bullet = bodyA.bullet
+      let player, bullet
 
-    } else {
-      player = bodyA.player
-      bullet = bodyB.bullet
+      if (bodyA.gameEntityType === 'BULLET') {
+        player = bodyB.player
+        bullet = bodyA.bullet
+
+      } else {
+        player = bodyA.player
+        bullet = bodyB.bullet
+      }
+
+      const wasKilled = player.hit(bullet.damage)
+      if (wasKilled) {
+        bullet.player.increaseKillScore()
+
+        if (this.hasTeamLost(player)) {
+          console.log(player.collisionGroupId, 'lost')
+
+          this.teamsScores[bullet.player.collisionGroupId]++;
+
+          Object.keys(this.players).forEach(slotId => {
+            const player = this.players[slotId]
+
+            if (player) {
+              this.sendTeamScoresMessage(player)
+            }
+          })
+
+          this.state = STATES.PRE_COUNTDOWN
+
+          setTimeout(() => {
+            this.startCountDown()
+          }, 1000)
+        }
+      }
+      bullet.destroy()
+    }
+  }
+
+  sendTeamScoresMessage (player) {
+    const teamScoresMessage = 'Team scores: ' + this.teamsScores.TEAM_1 + ' - ' + this.teamsScores.TEAM_2
+    player.socket.emit('teamScoresUpdated', teamScoresMessage)
+  }
+
+  hasTeamLost (killedPlayer) {
+    const playerSlotIds = Object.keys(this.players)
+
+    for (let i = 0; i < playerSlotIds.length; i++) {
+      const player = this.players[playerSlotIds[i]]
+
+      if (player && player.collisionGroupId === killedPlayer.collisionGroupId && player.hp > 0) {
+        return false
+      }
     }
 
-    const wasKilled = player.hit(bullet.damage)
-    if (wasKilled) {
-      bullet.player.increaseKillScore()
-    }
-    bullet.destroy()
+    return true
   }
 
   update () {

@@ -4,6 +4,15 @@ const Bullet = require('./Bullet')
 const { MASKS, GROUPS } = require('./collision')
 const { SPAWN_OFFSET } = require('./const')
 
+const SPAWN_OFFSETS = {
+  PLAYER_1: {X: 0, Y: 0},
+  PLAYER_2: {X: 50, Y: 0},
+  PLAYER_3: {X: 0, Y: 50},
+  PLAYER_4: {X: 0, Y: 0},
+  PLAYER_5: {X: -50, Y: 0},
+  PLAYER_6: {X: 0, Y: -50}
+}
+
 class Player {
   constructor (id, game, socket, x, y, collisionGroupId) {
     this.game = game
@@ -14,9 +23,18 @@ class Player {
     this.shootingRate = 0.1
     this.collisionGroupId = collisionGroupId
     this.hp = 100
+    this.canControl = false
     this.score = {
       kills: 0,
       deaths: 0
+    }
+
+    if (collisionGroupId === 'TEAM_1') {
+      this.respawnX = SPAWN_OFFSET + SPAWN_OFFSETS[id].X
+      this.respawnY = SPAWN_OFFSET + SPAWN_OFFSETS[id].Y
+    } else {
+      this.respawnX = game.bounds.x - SPAWN_OFFSET + SPAWN_OFFSETS[id].X
+      this.respawnY = game.bounds.y - SPAWN_OFFSET + SPAWN_OFFSETS[id].Y
     }
 
     this.id = id
@@ -63,7 +81,7 @@ class Player {
   }
 
   update () {
-    if (this.hp > 0) {
+    if (this.canControl && this.hp > 0) {
       this.move()
       this.shoot()
     }
@@ -192,24 +210,27 @@ class Player {
     socket.emit('playerKilled', this.serialize())
     socket.broadcast.emit('enemyKilled', { id: this.socket.id })
 
-    console.log(socket.id, 'killed')
+    console.log(this.id, 'killed')
 
-    setTimeout(() => {
-      this.respawn()
-    }, 5000)
+    // setTimeout(() => {
+    //   this.respawn()
+    // }, 5000)
   }
 
-  respawn () {
+  respawn (x, y) {
     const { body, world, socket, game } = this
 
     this.hp = 100
 
-    body.position[0] = getRandomInt(SPAWN_OFFSET, game.bounds.x - SPAWN_OFFSET)
-    body.position[1] = getRandomInt(SPAWN_OFFSET, game.bounds.y - SPAWN_OFFSET)
+    // x = x || this.respawnX || getRandomInt(SPAWN_OFFSET, game.bounds.x - SPAWN_OFFSET)
+    // y = y || this.respawnY || getRandomInt(SPAWN_OFFSET, game.bounds.y - SPAWN_OFFSET)
+
+    body.position[0] = this.respawnX
+    body.position[1] = this.respawnY
 
     world.addBody(body)
 
-    console.log(socket.id, 'respawned')
+    console.log(this.id, 'respawned')
 
     socket.emit('playerRespawned', this.serialize())
     socket.broadcast.emit('enemyRespawned', this.serialize())
